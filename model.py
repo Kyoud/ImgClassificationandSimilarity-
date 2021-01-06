@@ -14,6 +14,9 @@ import numpy as np
 data_dir = pathlib.Path("carBrands")
 print(data_dir)
 image_count = len(list(data_dir.glob('*/*.jpg')))
+bmw_count = len(list(data_dir.glob('bmw/*.jpg')))
+audi_count = len(list(data_dir.glob('audi/*.jpg')))
+mercedesBenz_count = len(list(data_dir.glob('mercedesBenz/*.jpg')))
 print(image_count)
 
 # parameters dataset
@@ -53,7 +56,6 @@ for image_batch, labels_batch in train_ds:
     print(labels_batch.shape)
     break
 
-
 # preprocessing for performance caching the data
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
@@ -63,7 +65,6 @@ val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 normalization_layer = layers.experimental.preprocessing.Rescaling(1. / 255)
 normalized_ds = train_ds.map(lambda x, y: (normalization_layer(x), y))
 image_batch, labels_batch = next(iter(normalized_ds))
-
 
 num_classes = 3
 
@@ -94,6 +95,12 @@ model = Sequential([
     layers.Dense(128, activation='relu'),
     layers.Dense(num_classes)
 ])
+# weighting the classes based on occurrence in dataset
+class_weights = {
+    0: mercedesBenz_count/audi_count,
+    1: mercedesBenz_count/bmw_count,
+    2: 1
+}
 
 # compile the model
 model.compile(optimizer='adam',
@@ -107,10 +114,10 @@ epochs = 10
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=epochs
+    epochs=epochs,
+    class_weight=class_weights
 )
 model.save('carClassifierModel')
-
 
 # visualization of the model loss, and accuracy
 acc = history.history['accuracy']
@@ -134,5 +141,3 @@ plt.plot(epochs_range, val_loss, label='Validation Loss')
 plt.legend(loc='upper right')
 plt.title('Training and Validation Loss')
 plt.show()
-
-
